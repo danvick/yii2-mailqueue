@@ -28,8 +28,8 @@ class Message extends \yii\swiftmailer\Message
         if ($time_to_send == 'now') {
             $time_to_send = time();
         }
-
-        $item = new (Yii::$app->mailqueue->queueModelClass)([
+        $queueModelClass = Yii::$app->mailqueue->queueModelClass;
+        $item = new $queueModelClass([
             'subject' => $this->getSubject(),
             'attempts' => 0,
             'swift_message' => base64_encode(serialize($this)),
