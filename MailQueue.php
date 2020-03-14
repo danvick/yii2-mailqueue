@@ -9,6 +9,7 @@ namespace nterms\mailqueue;
 
 use Yii;
 use yii\base\InvalidConfigException;
+use yii\db\ActiveRecord;
 use yii\db\Connection;
 use yii\db\Expression;
 use yii\di\Instance;
@@ -66,6 +67,10 @@ class MailQueue extends Mailer
      * Starting from version 2.0.2, this can also be a configuration array for creating the object.
      */
     public $db = 'db';
+    /**
+     * @var ActiveRecord|string
+     */
+    public $queueModelClass = 'nterms\mailqueue\models\Queue';
 
 	/**
 	 * @var string the name of the database table to store the mail queue.
@@ -95,6 +100,7 @@ class MailQueue extends Mailer
 	public function init()
 	{
         $this->db = Instance::ensure($this->db, Connection::className());
+        $this->queueModelClass = Instance::ensure($this->db, ActiveRecord::className());
 		parent::init();
 	}
 
@@ -112,7 +118,7 @@ class MailQueue extends Mailer
 		
 		$success = true;
 
-		$items = Queue::find()->where(['and', ['sent_time' => NULL], ['<', 'attempts', $this->maxAttempts], ['<=', 'time_to_send', date('Y-m-d H:i:s')]])->orderBy(['created_at' => SORT_ASC])->limit($this->mailsPerRound);
+		$items = ($this->queueModelClass)::find()->where(['and', ['sent_time' => NULL], ['<', 'attempts', $this->maxAttempts], ['<=', 'time_to_send', date('Y-m-d H:i:s')]])->orderBy(['created_at' => SORT_ASC])->limit($this->mailsPerRound);
 		foreach ($items->each() as $item) {
 		    if ($message = $item->toMessage()) {
 			$attributes = ['attempts', 'last_attempt_time'];
@@ -147,6 +153,6 @@ class MailQueue extends Mailer
 	
 	public function purge()
 	{
-		return Queue::deleteAll('sent_time IS NOT NULL');
+		return ($this->queueModelClass)::deleteAll('sent_time IS NOT NULL');
 	}
 }
