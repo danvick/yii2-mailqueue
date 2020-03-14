@@ -100,7 +100,7 @@ class MailQueue extends Mailer
 	public function init()
 	{
         $this->db = Instance::ensure($this->db, Connection::className());
-        $this->queueModelClass = Instance::ensure($this->db, ActiveRecord::className());
+        $this->queueModelClass = Instance::ensure($this->queueModelClass, ActiveRecord::className());
 		parent::init();
 	}
 
