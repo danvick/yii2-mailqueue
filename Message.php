@@ -7,8 +7,8 @@
 
 namespace nterms\mailqueue;
 
-use Yii;
 use nterms\mailqueue\models\Queue;
+use Yii;
 
 /**
  * Extends `yii\swiftmailer\Message` to enable queuing.
@@ -25,16 +25,17 @@ class Message extends \yii\swiftmailer\Message
      */
     public function queue($time_to_send = 'now')
     {
-        if($time_to_send == 'now') {
+        if ($time_to_send == 'now') {
             $time_to_send = time();
         }
 
-        $item = new Queue();
+        $item = new (Yii::$app->mailqueue->queueModelClass)([
+            'subject' => $this->getSubject(),
+            'attempts' => 0,
+            'swift_message' => base64_encode(serialize($this)),
+            'time_to_send' => date('Y-m-d H:i:s', $time_to_send),
+        ]);
 
-        $item->subject = $this->getSubject();
-        $item->attempts = 0;
-        $item->swift_message = base64_encode(serialize($this));
-        $item->time_to_send = date('Y-m-d H:i:s', $time_to_send);
 
         return $item->save();
     }
