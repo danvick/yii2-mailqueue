@@ -8,6 +8,10 @@
 namespace nterms\mailqueue;
 
 use Yii;
+use yii\base\InvalidConfigException;
+use yii\db\Connection;
+use yii\db\Expression;
+use yii\di\Instance;
 use yii\swiftmailer\Mailer;
 use nterms\mailqueue\Message;
 use nterms\mailqueue\models\Queue;
@@ -55,6 +59,14 @@ class MailQueue extends Mailer
 	 */
 	public $messageClass = 'nterms\mailqueue\Message';
 
+    /**
+     * @var Connection|array|string the DB connection object or the application component ID of the DB connection.
+     * After the DbManager object is created, if you want to change this property, you should only assign it
+     * with a DB connection object.
+     * Starting from version 2.0.2, this can also be a configuration array for creating the object.
+     */
+    public $db = 'db';
+
 	/**
 	 * @var string the name of the database table to store the mail queue.
 	 */
@@ -76,23 +88,26 @@ class MailQueue extends Mailer
 	 */
 	public $autoPurge = true;
 
-	/**
-	 * Initializes the MailQueue component.
-	 */
+    /**
+     * Initializes the MailQueue component.
+     * @throws InvalidConfigException
+     */
 	public function init()
 	{
+        $this->db = Instance::ensure($this->db, Connection::className());
 		parent::init();
 	}
 
-	/**
-	 * Sends out the messages in email queue and update the database.
-	 *
-	 * @return boolean true if all messages are successfully sent out
-	 */
+    /**
+     * Sends out the messages in email queue and update the database.
+     *
+     * @return boolean true if all messages are successfully sent out
+     * @throws InvalidConfigException
+     */
 	public function process()
 	{
-		if (Yii::$app->db->getTableSchema($this->table) == null) {
-			throw new \yii\base\InvalidConfigException('"' . $this->table . '" not found in database. Make sure the db migration is properly done and the table is created.');
+		if ($this->db->getTableSchema($this->table) == null) {
+			throw new InvalidConfigException('"' . $this->table . '" not found in database. Make sure the db migration is properly done and the table is created.');
 		}
 		
 		$success = true;
@@ -102,14 +117,14 @@ class MailQueue extends Mailer
 		    if ($message = $item->toMessage()) {
 			$attributes = ['attempts', 'last_attempt_time'];
 			if ($this->send($message)) {
-			    $item->sent_time = new \yii\db\Expression('NOW()');
+			    $item->sent_time = new Expression('NOW()');
 			    $attributes[] = 'sent_time';
 			} else {
 			    $success = false;
 			}
 
 			$item->attempts++;
-			$item->last_attempt_time = new \yii\db\Expression('NOW()');
+			$item->last_attempt_time = new Expression('NOW()');
 
 			$item->updateAttributes($attributes);
 		    }
